@@ -1,5 +1,6 @@
 package org.example.dto;
 
+import jakarta.persistence.Column;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -10,14 +11,21 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class Notification {
-
     private Long id;
-    private String title;
+
+
     private String message;
-    private Long supplierId;
-    private String supplierName;
-    private LocalDateTime createdAt;
-    private boolean isRead;
+
+
+    private String type;
+
+
+    private LocalDateTime timestamp;
+
+    private boolean read;
+
+    private String userId;
+
 }
 
 

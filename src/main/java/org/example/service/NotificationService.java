@@ -1,58 +1,80 @@
 package org.example.service;
 
-import org.example.mapper.NotificationMapper;
+import lombok.RequiredArgsConstructor;
 import org.example.dto.Notification;
 import org.example.entitiy.NotificationEntity;
-import org.example.entitiy.SuplierEntity;
 
 import org.example.repository.NotificationRepository;
-import org.example.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+
 @Service
+@RequiredArgsConstructor
 public class NotificationService {
-    private final NotificationRepository notificationRepository;
-    private final SupplierRepository supplierRepository;
-    private final NotificationMapper notificationMapper;
 
-    public NotificationService(NotificationRepository notificationRepository,
-                               SupplierRepository supplierRepository,
-                               NotificationMapper notificationMapper) {
-        this.notificationRepository = notificationRepository;
-        this.supplierRepository = supplierRepository;
-        this.notificationMapper = notificationMapper;
+
+
+
+        private final NotificationRepository notificationRepository;
+
+
+        private final SimpMessagingTemplate messagingTemplate;
+
+        public List<NotificationEntity> getAllNotifications() {
+            return notificationRepository.findAll();
+        }
+
+        public List<NotificationEntity> getNotificationsByUser(String userId) {
+            return notificationRepository.findByUserIdOrderByTimestampDesc(userId);
+        }
+
+        public List<NotificationEntity> getUnreadNotificationsByUser(String userId) {
+            return notificationRepository.findByUserIdAndReadOrderByTimestampDesc(userId, false);
+        }
+
+        public long countUnreadNotifications(String userId) {
+            return notificationRepository.countByUserIdAndRead(userId, false);
+        }
+
+        public NotificationEntity saveNotification(NotificationEntity notification) {
+            if (notification.getTimestamp() == null) {
+                notification.setTimestamp(LocalDateTime.now());
+            }
+            return notificationRepository.save(notification);
+        }
+
+        public NotificationEntity markAsRead(Long id) {
+            NotificationEntity notification = notificationRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Notification not found"));
+            notification.setRead(true);
+            return notificationRepository.save(notification);
+        }
+
+        public void markAllAsRead(String userId) {
+            List<NotificationEntity> unreadNotifications = notificationRepository.findByUserIdAndReadOrderByTimestampDesc(userId, false);
+            for (NotificationEntity notification : unreadNotifications) {
+                notification.setRead(true);
+                notificationRepository.save(notification);
+            }
+        }
+
+        public void sendNotification(NotificationEntity notification) {
+            messagingTemplate.convertAndSend("/topic/notifications/" + notification.getUserId(), notification);
+            // Also send to a general topic for system-wide notifications if needed
+            messagingTemplate.convertAndSend("/topic/notifications", notification);
+        }
+
+        public void deleteNotification(Long id) {
+            notificationRepository.deleteById(id);
+        }
     }
 
-    public Notification createNotification(Notification notificationDTO) {
-        SuplierEntity supplier = supplierRepository.findById(notificationDTO.getSupplierId())
-                .orElseThrow(() -> new RuntimeException("Supplier not found"));
 
-        NotificationEntity notificationEntity = notificationMapper.toEntity(notificationDTO);
-        notificationEntity.setSupplier(supplier);
-
-        NotificationEntity savedEntity = notificationRepository.save(notificationEntity);
-
-
-        return notificationMapper.toDtoWithSupplier(notificationEntity);
-    }
-
-    public List<Notification> getNotificationsBySupplierId(Long supplierId) {
-        return notificationRepository.findBySupplierId(supplierId)
-                .stream()
-                .map(notificationMapper::toDtoWithSupplier)
-                .collect(Collectors.toList());
-    }
-
-    public Notification markAsRead(Long notificationId) {
-        NotificationEntity notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Notification not found"));
-
-        notification.setRead(true);
-        notification = notificationRepository.save(notification);
-
-        return notificationMapper.toDtoWithSupplier(notification);
-    }
-}

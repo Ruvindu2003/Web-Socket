@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Data
-
 @Table(name = "Notification")
 @AllArgsConstructor
 public class NotificationEntity {
@@ -19,26 +18,20 @@ public class NotificationEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    @ManyToOne
-    @JoinColumn(name = "supplier_id", nullable = false)
-    private SuplierEntity supplier;
 
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column
-    private boolean isRead;
-
-    public NotificationEntity() {
-        this.createdAt = LocalDateTime.now();
-        this.isRead = false;
-    }
+    private String type;
 
 
-   }
+    private LocalDateTime timestamp;
+
+    @Column(name = "is_read", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean read;
+    @Column(name = "user_id")
+    private String userId;
+}
+
+
+
